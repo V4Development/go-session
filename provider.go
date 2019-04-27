@@ -268,7 +268,7 @@ func (p *MySQLProvider) Destroy(sid string) error {
 }
 
 func (p *MySQLProvider) GarbageCollect() {
-	q := "DELETE FROM " + p.Table + " WHERE expire < CURDATE()"
+	q := "DELETE FROM " + p.Table + " WHERE expire < CURRENT_TIMESTAMP"
 	stmt, err := p.Prepare(q)
 	if err != nil {
 		log.Print(err.Error())
