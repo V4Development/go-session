@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/go-redis/redis"
 	_ "github.com/go-sql-driver/mysql"
+	"log"
 	"sync"
 	"time"
 )
@@ -267,7 +268,17 @@ func (p *MySQLProvider) Destroy(sid string) error {
 }
 
 func (p *MySQLProvider) GarbageCollect() {
+	q := "DELETE FROM " + p.Table + " WHERE expire < CURDATE()"
+	stmt, err := p.Prepare(q)
+	if err != nil {
+		log.Print(err.Error())
+	}
 
+	//exp := time.Now()
+	_, err = stmt.Exec()
+	if err != nil {
+		log.Print(err.Error())
+	}
 }
 
 func (p *MySQLProvider) MySQLInit() error {

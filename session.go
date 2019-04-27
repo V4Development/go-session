@@ -118,3 +118,7 @@ func (m *Manager) UUID() string {
 func (m *Manager) Expiration() time.Time {
 	return time.Now().Add(time.Duration(m.Lifetime) * time.Second)
 }
+
+func (m *Manager) GarbageCollect() {
+	go m.Provider.GarbageCollect()
+}
