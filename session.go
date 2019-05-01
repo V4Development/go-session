@@ -2,7 +2,7 @@ package session
 
 import (
 	"errors"
-	"github.com/satori/go.uuid"
+	"github.com/gofrs/uuid"
 	"net/http"
 	"strings"
 	"sync"
@@ -112,7 +112,8 @@ func (m *Manager) Destroy(sess *Session) error {
 }
 
 func (m *Manager) UUID() string {
-	return uuid.NewV4().String()
+	id, _ := uuid.NewV4()
+	return id.String()
 }
 
 func (m *Manager) Expiration() time.Time {
