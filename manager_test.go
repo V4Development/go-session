@@ -1,72 +1,57 @@
 package session
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
+	firebase "firebase.google.com/go"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/v4development/go-session/provider"
+	"google.golang.org/api/option"
+	"log"
 	"net/http"
 	"testing"
+	"time"
 )
 
 func TestSession(t *testing.T) {
 
 }
 
-func TestRedisProvider(t *testing.T) {
-	manager := Manager{
+func TestMemoryProvider(t *testing.T) {
+	m := &Manager{
 		SessionType: TypeHeader, //not really needed. all of them are headers
 		TokenName:   HeaderKey,
 		TokenType:   HeaderPrefix,
-		Provider: &RedisProvider{
-			Config: &RedisConfig{
+		Provider:    provider.NewMemoryProvider(),
+		Lifetime:    provider.DefaultSessionExpiration,
+	}
+
+	runTest(m, 0, 2)
+}
+
+func TestRedisProvider(t *testing.T) {
+	m := &Manager{
+		SessionType: TypeHeader, //not really needed. all of them are headers
+		TokenName:   HeaderKey,
+		TokenType:   HeaderPrefix,
+		Provider: &provider.RedisProvider{
+			Config: &provider.RedisConfig{
 				Server:   "localhost:6379",
-				Password: "",
-				Database: DefaultRedisDatabase,
+				Password: TestConfig.RedisPassword,
+				Database: provider.DefaultRedisDatabase,
 			},
 		},
-		Lifetime: DefaultSessionExpire,
+		Lifetime: provider.DefaultSessionExpiration,
 	}
 
-	sid := manager.UUID()
-	fmt.Println(sid)
-
-	session := manager.Provider.Init(sid)
-	session.Data["value-string"] = "Test Data String"
-	session.Data["value-int"] = 100
-	session.Data["value-float"] = 100.001
-
-	err := manager.Save(session)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	sess, err := manager.Provider.Read(sid)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	j, err := json.Marshal(sess)
-	fmt.Println(string(j))
-
-	request := &http.Request{
-		Header: make(http.Header),
-	}
-	request.Header.Set(HeaderKey, HeaderPrefix+" "+sid)
-
-	sess, err = manager.RequestLoad(request)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	j, err = json.Marshal(sess)
-	fmt.Println(string(j))
+	runTest(m, 10, 2)
 }
 
 func TestMySQLProvider(t *testing.T) {
 	// database connection
-	ds := "[USERNAME]:[PASSWORD]@tcp([HOST]:3306)/[DATABASE]?parseTime=true"
-	db, err := sql.Open("mysql", ds)
+	db, err := sql.Open("mysql", TestConfig.MySQLDatasource)
 	if err != nil {
 		t.Error(err)
 	}
@@ -77,30 +62,61 @@ func TestMySQLProvider(t *testing.T) {
 		}
 	}()
 
-	provider := &MySQLProvider{
+	p := &provider.MySQLProvider{
 		DB:    db,
-		Table: DefaultMySQLTableName,
+		Table: provider.DefaultMySQLTableName,
 	}
-	err = provider.MySQLInit()
+	err = p.MySQLInit()
 	if err != nil {
 		t.Error(err)
 	}
 
-	manager := Manager{
+	m := &Manager{
 		SessionType: TypeHeader, //not really needed. all of them are headers
 		TokenName:   HeaderKey,
 		TokenType:   HeaderPrefix,
-		Provider:    provider,
-		Lifetime:    DefaultSessionExpire,
+		Provider:    p,
+		Lifetime:    provider.DefaultSessionExpiration,
 	}
 
-	sid := manager.UUID()
-	fmt.Println(sid)
+	runTest(m, 10, 2)
+}
 
-	session := manager.Provider.Init(sid)
+func TestFirestoreProvider(t *testing.T) {
+	ctx := context.Background()
+
+	// auth and connect with firebase
+	auth := option.WithCredentialsJSON([]byte(TestConfig.FirestoreCreds))
+	firebaseApp, err := firebase.NewApp(ctx, nil, auth)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// setup firestore client
+	fc, err := firebaseApp.Firestore(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	p := provider.NewFirestoreProvider(ctx, fc, provider.DefaultFirestoreCollection)
+
+	m := &Manager{
+		SessionType: TypeHeader, //not really needed. all of them are headers
+		TokenName:   HeaderKey,
+		TokenType:   HeaderPrefix,
+		Provider:    p,
+		Lifetime:    provider.DefaultSessionExpiration,
+	}
+
+	runTest(m, 10, 2)
+}
+
+func runTest(manager *Manager, deleteDelay, gcDelay time.Duration) {
+	session := manager.NewSession()
+	sid := session.UUID
 
 	fmt.Println("********* Save Empty *************")
-	err = manager.Save(session)
+	err := manager.Save(session)
 	if err != nil {
 		fmt.Print("err")
 		fmt.Println(err)
@@ -118,7 +134,7 @@ func TestMySQLProvider(t *testing.T) {
 	fmt.Println(string(j))
 	fmt.Println("*************************")
 
-	fmt.Println("************ Load *************")
+	fmt.Println("************ HTTP Request Load *************")
 	request := &http.Request{
 		Header: make(http.Header),
 	}
@@ -160,6 +176,7 @@ func TestMySQLProvider(t *testing.T) {
 	fmt.Println("*************************")
 
 	fmt.Println("********* Destroy *************")
+	time.Sleep(deleteDelay * time.Second)
 	manager.Destroy(sess)
 
 	fmt.Println("************ Load Destroyed *************")
@@ -171,10 +188,17 @@ func TestMySQLProvider(t *testing.T) {
 	sess, err = manager.RequestLoad(request)
 	if err != nil {
 		fmt.Println(err)
+		fmt.Println("  -- expected")
 	} else {
 		j, err = json.Marshal(sess)
 		fmt.Println(string(j))
 	}
 
 	fmt.Println("*************************")
+
+	fmt.Println("********* Garbage Collect *************")
+	manager.GarbageCollect()
+	fmt.Println("*************************")
+
+	time.Sleep(gcDelay * time.Second)
 }
