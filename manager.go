@@ -91,5 +91,5 @@ func (m *Manager) Expiration() time.Time {
 }
 
 func (m *Manager) GarbageCollect() {
-	go m.Provider.GarbageCollect()
+	m.Provider.GarbageCollect()
 }

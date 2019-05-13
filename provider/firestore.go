@@ -8,8 +8,6 @@ import (
 	"time"
 )
 
-// Firebase Session Provider
-
 const DefaultFirestoreCollection = "session"
 
 type FirestoreProvider struct {

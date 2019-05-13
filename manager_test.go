@@ -28,7 +28,7 @@ func TestMemoryProvider(t *testing.T) {
 		Lifetime:    provider.DefaultSessionExpiration,
 	}
 
-	runTest(m, 0, 2)
+	runTest(m, 0)
 }
 
 func TestRedisProvider(t *testing.T) {
@@ -46,7 +46,7 @@ func TestRedisProvider(t *testing.T) {
 		Lifetime: provider.DefaultSessionExpiration,
 	}
 
-	runTest(m, 10, 2)
+	runTest(m, 10)
 }
 
 func TestMySQLProvider(t *testing.T) {
@@ -62,11 +62,7 @@ func TestMySQLProvider(t *testing.T) {
 		}
 	}()
 
-	p := &provider.MySQLProvider{
-		DB:    db,
-		Table: provider.DefaultMySQLTableName,
-	}
-	err = p.MySQLInit()
+	p, err := provider.NewMySQLProvider(db, provider.DefaultMySQLTableName)
 	if err != nil {
 		t.Error(err)
 	}
@@ -79,7 +75,7 @@ func TestMySQLProvider(t *testing.T) {
 		Lifetime:    provider.DefaultSessionExpiration,
 	}
 
-	runTest(m, 10, 2)
+	runTest(m, 10)
 }
 
 func TestFirestoreProvider(t *testing.T) {
@@ -108,10 +104,10 @@ func TestFirestoreProvider(t *testing.T) {
 		Lifetime:    provider.DefaultSessionExpiration,
 	}
 
-	runTest(m, 10, 2)
+	runTest(m, 10)
 }
 
-func runTest(manager *Manager, deleteDelay, gcDelay time.Duration) {
+func runTest(manager *Manager, deleteDelay time.Duration) {
 	session := manager.NewSession()
 	sid := session.UUID
 
@@ -199,6 +195,4 @@ func runTest(manager *Manager, deleteDelay, gcDelay time.Duration) {
 	fmt.Println("********* Garbage Collect *************")
 	manager.GarbageCollect()
 	fmt.Println("*************************")
-
-	time.Sleep(gcDelay * time.Second)
 }

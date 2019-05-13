@@ -13,17 +13,20 @@ const DefaultMySQLTableName = "session"
 type MySQLProvider struct {
 	*sql.DB
 	Table    string
-	SysCheck bool
 }
 
-func NewMySQLProvider (db *sql.DB, table string) *MySQLProvider {
-	// TODO: Table Check/Creation
-
-	return &MySQLProvider{
+func NewMySQLProvider (db *sql.DB, table string) (*MySQLProvider, error) {
+	p := &MySQLProvider{
 		db,
 		table,
-		false,
 	}
+
+	if err := p.MySQLSetupCheck(); err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	return p, nil
 }
 
 func (p *MySQLProvider) Read(sid string) (*Session, error) {
@@ -85,42 +88,34 @@ func (p *MySQLProvider) GarbageCollect() {
 	q := "DELETE FROM " + p.Table + " WHERE expire < CURRENT_TIMESTAMP"
 	stmt, err := p.Prepare(q)
 	if err != nil {
-		log.Print(err.Error())
+		log.Println(err.Error())
+		return
 	}
 
 	//exp := time.Now()
-	_, err = stmt.Exec()
-	if err != nil {
-		log.Print(err.Error())
+	if _, err = stmt.Exec(); err != nil {
+		log.Println(err.Error())
 	}
 }
 
-func (p *MySQLProvider) MySQLInit() error {
-	if !p.SysCheck {
-		q := "DESCRIBE " + p.Table
-		if _, err := p.Exec(q); err != nil {
-			if e, ok := err.(*mysql.MySQLError); ok && e.Number == 1146 {
-				// create the table
-				q = "CREATE TABLE IF NOT EXISTS " + p.Table + " (" +
-					"uuid varchar(36) not null," +
-					"data blob null," +
-					"expire datetime default CURRENT_TIMESTAMP not null," +
-					"constraint " + p.Table + "_pk " +
-					"primary key (uuid))"
+func (p *MySQLProvider) MySQLSetupCheck() error {
+	q := "DESCRIBE " + p.Table
+	if _, err := p.Exec(q); err != nil {
+		if e, ok := err.(*mysql.MySQLError); ok && e.Number == 1146 {
+			// create the table
+			q = "CREATE TABLE IF NOT EXISTS " + p.Table + " (" +
+				"uuid varchar(36) not null," +
+				"data blob null," +
+				"expire datetime default CURRENT_TIMESTAMP not null," +
+				"constraint " + p.Table + "_pk " +
+				"primary key (uuid))"
 
-				_, err := p.Exec(q)
-				if err != nil {
-					p.SysCheck = false
-					return err
-				}
-
-				p.SysCheck = true
-			} else {
-				p.SysCheck = false
+			_, err := p.Exec(q)
+			if err != nil {
 				return err
 			}
 		} else {
-			p.SysCheck = true
+			return err
 		}
 	}
 
