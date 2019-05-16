@@ -1,4 +1,4 @@
-package provider
+package session
 
 import (
 	"cloud.google.com/go/firestore"
@@ -11,9 +11,9 @@ import (
 const DefaultFirestoreCollection = "session"
 
 type FirestoreProvider struct {
-	Context context.Context
-	Client *firestore.Client
-	Collection *firestore.CollectionRef
+	Context        context.Context
+	Client         *firestore.Client
+	Collection     *firestore.CollectionRef
 	CollectionName string
 }
 

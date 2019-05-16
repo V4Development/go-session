@@ -1,4 +1,4 @@
-package provider
+package session
 
 import (
 	"github.com/gofrs/uuid"
@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	DefaultSessionExpiration     = 1200
+	DefaultSessionExpiration = 1200
 )
 
 type Session struct {

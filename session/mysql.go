@@ -1,4 +1,4 @@
-package provider
+package session
 
 import (
 	"database/sql"
@@ -12,10 +12,10 @@ const DefaultMySQLTableName = "session"
 
 type MySQLProvider struct {
 	*sql.DB
-	Table    string
+	Table string
 }
 
-func NewMySQLProvider (db *sql.DB, table string) (*MySQLProvider, error) {
+func NewMySQLProvider(db *sql.DB, table string) (*MySQLProvider, error) {
 	p := &MySQLProvider{
 		db,
 		table,

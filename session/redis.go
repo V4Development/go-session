@@ -1,4 +1,4 @@
-package provider
+package session
 
 import (
 	"encoding/json"
@@ -14,20 +14,27 @@ const DefaultRedisDatabase = 0
 
 type RedisProvider struct {
 	// Servers []string
-	Client *redis.Client
-	Config *RedisConfig
+	Client  *redis.Client
+	Options *redis.Options
 }
 
-type RedisConfig struct {
-	Server   string
-	Password string
-	Database int
+func NewRedisProvider(server, password string, database int) (*RedisProvider, error) {
+	o := &redis.Options{
+		Addr:     server,
+		Password: password,
+		DB:       database,
+	}
+
+	p := &RedisProvider{
+		Options: o,
+	}
+
+	p.RedisInit()
+
+	return p, nil
 }
 
 func (p *RedisProvider) Read(sid string) (*Session, error) {
-	// TODO: Remove from here....should be moved out to initialization
-	p.RedisInit()
-
 	data, err := p.Client.Get(sid).Result()
 	if err != nil {
 		fmt.Println("RedisProvider - Get Data: ", err)
@@ -47,9 +54,6 @@ func (p *RedisProvider) Read(sid string) (*Session, error) {
 }
 
 func (p *RedisProvider) Save(session *Session) error {
-	// TODO: Remove from here....should be moved out to initialization
-	p.RedisInit()
-
 	data, err := json.Marshal(session)
 	if err != nil {
 		return err
@@ -61,23 +65,17 @@ func (p *RedisProvider) Save(session *Session) error {
 }
 
 func (p *RedisProvider) Destroy(sid string) error {
-	// TODO: Remove from here....should be moved out to initialization
-	p.RedisInit()
 	p.Client.Del(sid)
 	return nil
 }
 
 func (p *RedisProvider) GarbageCollect() {
-
+	// Not needed with entries that have an expiration
 }
 
 func (p *RedisProvider) RedisInit() {
 	if p.Client == nil {
-		p.Client = redis.NewClient(&redis.Options{
-			Addr:     p.Config.Server,
-			Password: p.Config.Password,
-			DB:       p.Config.Database,
-		})
+		p.Client = redis.NewClient(p.Options)
 	}
 }
 

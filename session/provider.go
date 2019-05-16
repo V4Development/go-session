@@ -1,4 +1,4 @@
-package provider
+package session
 
 const (
 	ErrorSessionDoesNotExist = "ERR_SESSION_EXISTS"

@@ -1,4 +1,4 @@
-package provider
+package session
 
 type MemcacheProvider struct {
 	Servers []string

@@ -1,11 +1,13 @@
 package session
 
-var TestConfig = &struct{
-	RedisPassword string
+var TestConfig = &struct {
+	RedisHost       string
+	RedisPassword   string
 	MySQLDatasource string
-	FirestoreCreds string
+	FirestoreCreds  string
 }{
-	RedisPassword: "",
+	RedisHost:       "localhost:6379",
+	RedisPassword:   "",
 	MySQLDatasource: "[USERNAME]:[PASSWORD]@tcp([HOST]:3306)/[DATABASE]?parseTime=true",
-	FirestoreCreds: `{}`,
+	FirestoreCreds:  `{}`,
 }

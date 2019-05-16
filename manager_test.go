@@ -7,7 +7,7 @@ import (
 	firebase "firebase.google.com/go"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/v4development/go-session/provider"
+	"github.com/v4development/go-session/session"
 	"google.golang.org/api/option"
 	"log"
 	"net/http"
@@ -21,29 +21,23 @@ func TestSession(t *testing.T) {
 
 func TestMemoryProvider(t *testing.T) {
 	m := &Manager{
-		SessionType: TypeHeader, //not really needed. all of them are headers
-		TokenName:   HeaderKey,
-		TokenType:   HeaderPrefix,
-		Provider:    provider.NewMemoryProvider(),
-		Lifetime:    provider.DefaultSessionExpiration,
+		KeyName:  DefaultHeaderKey,
+		KeyType:  DefaultHeaderType,
+		Provider: session.NewMemoryProvider(),
+		Lifetime: session.DefaultSessionExpiration,
 	}
 
 	runTest(m, 0)
 }
 
 func TestRedisProvider(t *testing.T) {
+	p, _ := session.NewRedisProvider(TestConfig.RedisHost, TestConfig.RedisPassword, session.DefaultRedisDatabase)
+
 	m := &Manager{
-		SessionType: TypeHeader, //not really needed. all of them are headers
-		TokenName:   HeaderKey,
-		TokenType:   HeaderPrefix,
-		Provider: &provider.RedisProvider{
-			Config: &provider.RedisConfig{
-				Server:   "localhost:6379",
-				Password: TestConfig.RedisPassword,
-				Database: provider.DefaultRedisDatabase,
-			},
-		},
-		Lifetime: provider.DefaultSessionExpiration,
+		KeyName:  DefaultHeaderKey,
+		KeyType:  DefaultHeaderType,
+		Provider: p,
+		Lifetime: session.DefaultSessionExpiration,
 	}
 
 	runTest(m, 10)
@@ -62,17 +56,16 @@ func TestMySQLProvider(t *testing.T) {
 		}
 	}()
 
-	p, err := provider.NewMySQLProvider(db, provider.DefaultMySQLTableName)
+	p, err := session.NewMySQLProvider(db, session.DefaultMySQLTableName)
 	if err != nil {
 		t.Error(err)
 	}
 
 	m := &Manager{
-		SessionType: TypeHeader, //not really needed. all of them are headers
-		TokenName:   HeaderKey,
-		TokenType:   HeaderPrefix,
-		Provider:    p,
-		Lifetime:    provider.DefaultSessionExpiration,
+		KeyName:  DefaultHeaderKey,
+		KeyType:  DefaultHeaderType,
+		Provider: p,
+		Lifetime: session.DefaultSessionExpiration,
 	}
 
 	runTest(m, 10)
@@ -94,14 +87,13 @@ func TestFirestoreProvider(t *testing.T) {
 		log.Fatal(err)
 	}
 
-	p := provider.NewFirestoreProvider(ctx, fc, provider.DefaultFirestoreCollection)
+	p := session.NewFirestoreProvider(ctx, fc, session.DefaultFirestoreCollection)
 
 	m := &Manager{
-		SessionType: TypeHeader, //not really needed. all of them are headers
-		TokenName:   HeaderKey,
-		TokenType:   HeaderPrefix,
-		Provider:    p,
-		Lifetime:    provider.DefaultSessionExpiration,
+		KeyName:  DefaultHeaderKey,
+		KeyType:  DefaultHeaderType,
+		Provider: p,
+		Lifetime: session.DefaultSessionExpiration,
 	}
 
 	runTest(m, 10)
@@ -134,9 +126,9 @@ func runTest(manager *Manager, deleteDelay time.Duration) {
 	request := &http.Request{
 		Header: make(http.Header),
 	}
-	request.Header.Set(HeaderKey, HeaderPrefix+" "+sid)
+	request.Header.Set(DefaultHeaderKey, DefaultHeaderType+" "+sid)
 
-	sess, err = manager.RequestLoad(request)
+	sess, err = manager.HeaderLoad(request)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -160,9 +152,9 @@ func runTest(manager *Manager, deleteDelay time.Duration) {
 	request = &http.Request{
 		Header: make(http.Header),
 	}
-	request.Header.Set(HeaderKey, HeaderPrefix+" "+sid)
+	request.Header.Set(DefaultHeaderKey, DefaultHeaderType+" "+sid)
 
-	sess, err = manager.RequestLoad(request)
+	sess, err = manager.HeaderLoad(request)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -179,9 +171,9 @@ func runTest(manager *Manager, deleteDelay time.Duration) {
 	request = &http.Request{
 		Header: make(http.Header),
 	}
-	request.Header.Set(HeaderKey, HeaderPrefix+" "+sess.UUID)
+	request.Header.Set(DefaultHeaderKey, DefaultHeaderType+" "+sess.UUID)
 
-	sess, err = manager.RequestLoad(request)
+	sess, err = manager.HeaderLoad(request)
 	if err != nil {
 		fmt.Println(err)
 		fmt.Println("  -- expected")
