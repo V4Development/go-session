@@ -52,7 +52,7 @@ p := session.NewMemoryProvider()
 MySQL provider stores the session data in a MySQL database. The MySQLProvider takes a db connection and the name of the table to store the session data.
 ```
 db, err := sql.Open("mysql", "[CONNECTION_STRING]")
-... err checks and defer close statements ...
+... err checks and defer close handling ...
 p, err := session.NewMySQLProvider(db, session.DefaultMySQLTableName)
 if err != nil {
   log.Fatal(err)
@@ -60,7 +60,21 @@ if err != nil {
 ```
 
 #### Redis
-Redis provider store the session data in a Redis store.  The RedisProvider takes a RedisConfig struc that defines the host, password, and database id.
+Redis provider stores the session data in a Redis store.  The RedisProvider takes the host, password, and db id.
 ```
 p, _ := session.NewRedisProvider("[HOST]", "[PASSWORD]", [DATABASE])
+```
+
+#### Firestore
+Firestore provider stores the session data in a Firestore database. It takes the current context, a firestore client, and the collection name
+```
+ctx := context.Background()
+
+auth := option.WithCredentialsJSON([]byte("[FIRESTORE_CONFIG]"))
+firebaseApp, err := firebase.NewApp(ctx, nil, auth)
+... error checks and handling ...
+fc, err := firebaseApp.Firestore(ctx)
+... error checks and handling ...
+
+p := session.NewFirestoreProvider(ctx, fc, "[COLLECTION_NAME]")
 ```
